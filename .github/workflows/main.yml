@@ -86,7 +86,7 @@ jobs:
           
           # 3. Jalankan build-docker (di dalam env yang sama)
           echo "--- (Mulai Kriteria 3 Advance) Mulai Build Docker Image ---"
-          mlflow build-docker \
+          mlflow models build-docker \
             --name "tarismajohn/modelling-dicoding-sml-reksi:latest" \
             --push \
             MLProject/

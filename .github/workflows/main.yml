@@ -26,7 +26,7 @@ jobs:
 
       # Langkah 3: Setup Conda (Penting untuk 'conda.yaml' di MLProject)
       - name: Set up Miniconda
-        uses: conda-actions/setup-miniconda@v2
+        uses: conda-incubator/setup-miniconda@v3
         with:
           auto-update-conda: true
           python-version: 3.9

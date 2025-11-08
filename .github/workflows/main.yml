@@ -28,15 +28,13 @@ jobs:
         with:
           python-version: 3.9
 
-      # Langkah 3: Setup Conda
-      # (Menggunakan perbaikan 'conda-incubator' Anda)
+      # Langkah 3: Setup Conda (Menggunakan 'conda-incubator' Anda)
       - name: Set up Miniconda
         uses: conda-incubator/setup-miniconda@v2
         with:
           auto-update-conda: true
           python-version: 3.9
-          # Kita inisialisasi shell agar 'conda activate' siap dipakai
-          activate-environment: none 
+          activate-environment: none # Kita akan aktivasi manual
           auto-activate-base: false
 
       # Langkah 4: Install MLflow & DagsHub di base env
@@ -63,38 +61,35 @@ jobs:
           echo "MLFLOW_TRACKING_USERNAME=${MLFLOW_TRACKING_USERNAME}" >> $GITHUB_ENV
           echo "MLFLOW_TRACKING_PASSWORD=${MLFLOW_TRACKING_PASSWORD}" >> $GITHUB_ENV
 
-
+      # --- PERBAIKAN DIMULAI DI SINI ---
       
-      # Langkah 7 : Buat Environment Conda secara Manual
-      
+      # Langkah 7 (BARU): Buat Env Conda secara Manual
       - name: Create Conda Environment from conda.yaml
         run: |
           # 'mlops-k3-env' adalah 'name:' di file 'conda.yaml' Anda
           conda env create -f MLProject/conda.yaml
 
-      # Langkah 8 (BARU): Jalankan Script Python (Bukan 'mlflow run')
-      # (Ini adalah inti dari Kriteria 3 Basic)
-      - name: Run Python Script (Training)
+      # Langkah 8 (BARU & GABUNGAN): Jalankan Training DAN Build Docker
+      - name: Run Training and Build Docker Image
         env:
           # Teruskan secrets DagsHub ke langkah ini
           MLFLOW_TRACKING_URI: ${{ env.MLFLOW_TRACKING_URI }}
           MLFLOW_TRACKING_USERNAME: ${{ env.MLFLOW_TRACKING_USERNAME }}
           MLFLOW_TRACKING_PASSWORD: ${{ env.MLFLOW_TRACKING_PASSWORD }}
         run: |
-          # Aktifkan environment yang baru dibuat
+          # 1. Aktifkan environment yang baru dibuat
           conda activate mlops-k3-env
           
-          # Jalankan script python Anda
+          # 2. Jalankan script python Anda (Training)
+          echo "--- (Mulai Kriteria 3 Basic) Mulai Pelatihan Model ---"
           python MLProject/modelling.py
-
-      # --- PERBAIKAN SELESAI ---
-
-      # Langkah 9 (Lama: Langkah 8): Build & Push Docker Image
-      # (Ini akan berjalan karena MLflow sudah terinstal di base env)
-      - name: Build and Push Docker Image (mlflow build-docker)
-        run: |
-
+          
+          # 3. Jalankan build-docker (di dalam env yang sama)
+          echo "--- (Mulai Kriteria 3 Advance) Mulai Build Docker Image ---"
           mlflow build-docker \
             --name "tarismajohn/modelling-dicoding-sml-reksi:latest" \
             --push \
             MLProject/
+            
+      # --- PERBAIKAN SELESAI ---
+      # (Langkah 7 dan 8 yang lama sudah diganti/digabung)

@@ -43,8 +43,12 @@ except Exception as e:
     sys.exit(1)
 
 # --- 2. TENTUKAN PATH DATA ---
-TRAIN_PATH = os.path.join('winequality_preprocessing', 'train_processed.csv')
-TEST_PATH = os.path.join('winequality_preprocessing', 'test_processed.csv')
+# Dapatkan direktori tempat script ini (modelling.py) berada
+SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
+
+# Buat path relatif terhadap SCRIPT_DIR
+TRAIN_PATH = os.path.join(SCRIPT_DIR, 'winequality_preprocessing', 'train_processed.csv')
+TEST_PATH = os.path.join(SCRIPT_DIR, 'winequality_preprocessing', 'test_processed.csv')
 
 def load_data(train_path, test_path):
     """Memuat data CSV yang sudah diproses dari folder K1."""

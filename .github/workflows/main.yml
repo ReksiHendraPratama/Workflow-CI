@@ -1,0 +1,80 @@
+name: Kriteria 3 (Advance) - CI & Build Docker
+
+on:
+  push:
+    branches:
+      - main  # (Asumsi Anda pakai 'main')
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-train-and-push:
+    # Menggunakan server Ubuntu virtual terbaru
+    runs-on: ubuntu-latest
+
+    steps:
+      # Langkah 1: Checkout (mengunduh) kode Anda dari GitHub
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Langkah 2: Setup Python (untuk menjalankan MLflow)
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.9
+
+      # Langkah 3: Setup Conda (Penting untuk 'conda.yaml' di MLProject)
+      - name: Set up Miniconda
+        uses: conda-actions/setup-miniconda@v2
+        with:
+          auto-update-conda: true
+          python-version: 3.9
+
+      # Langkah 4: Install MLflow & DagsHub di Runner
+      - name: Install MLflow dependencies
+        run: |
+          pip install mlflow dagshub
+
+      # Langkah 5: Login ke Docker Hub (WAJIB 4 Poin)
+      # (Menggunakan 'secrets' yang sudah Anda buat)
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }} # Ini adalah Access Token Anda
+
+      # Langkah 6: Setup Kredensial DagsHub (WAJIB 4 Poin)
+      # (Menggunakan 'secrets' yang sudah Anda buat)
+      - name: Set DagsHub Environment Variables
+        env:
+          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+          MLFLOW_TRACKING_USERNAME: ${{ secrets.MLFLOW_TRACKING_USERNAME }}
+          MLFLOW_TRACKING_PASSWORD: ${{ secrets.MLFLOW_TRACKING_PASSWORD }}
+        run: |
+          echo "MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI}" >> $GITHUB_ENV
+          echo "MLFLOW_TRACKING_USERNAME=${MLFLOW_TRACKING_USERNAME}" >> $GITHUB_ENV
+          echo "MLFLOW_TRACKING_PASSWORD=${MLFLOW_TRACKING_PASSWORD}" >> $GITHUB_ENV
+
+      # Langkah 7: Menjalankan Pelatihan Model (via MLProject)
+      # (Ini akan membaca MLProject, membuat env Conda, dan menjalankan 'python modelling.py')
+      - name: Run MLflow Project (Training)
+        run: |
+          # Menjalankan 'entry_point: main' dari file MLProject Anda
+          mlflow run MLProject/
+        env:
+          # Meneruskan kredensial DagsHub ke langkah ini
+          MLFLOW_TRACKING_URI: ${{ env.MLFLOW_TRACKING_URI }}
+          MLFLOW_TRACKING_USERNAME: ${{ env.MLFLOW_TRACKING_USERNAME }}
+          MLFLOW_TRACKING_PASSWORD: ${{ env.MLFLOW_TRACKING_PASSWORD }}
+
+      # Langkah 8: Build & Push Docker Image (WAJIB 4 Poin)
+      # (Menggunakan fungsi mlflow build-docker)
+      - name: Build and Push Docker Image (mlflow build-docker)
+        run: |
+          # 
+          # 
+          mlflow build-docker \
+            --name "tarismajohn/modelling-dicoding-sml-reksi:latest" \
+            --push \
+            MLProject/

@@ -6,8 +6,28 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 import os
 
+# --- TAMBAHAN EKSPLISIT UNTUK OTORISASI GITHUB ACTIONS ---
+# Ini "memaksa" script Python untuk membaca environment variables
+# yang Anda atur di file YAML (GitHub Secrets).
+
+username = os.environ.get("MLFLOW_TRACKING_USERNAME")
+password = os.environ.get("MLFLOW_TRACKING_PASSWORD")
+
+if not username or not password:
+    print("Gagal mengambil MLFLOW_TRACKING_USERNAME atau PASSWORD dari environment.")
+    print("Pastikan secrets sudah di-set di GitHub dan di-pass ke 'env:' di file YAML.")
+    # Kita tidak exit() di sini, kita biarkan dagshub.init() mencoba dan mungkin gagal
+else:
+    # Set env var ini SECARA EKSPLISIT agar dagshub.init() bisa membacanya
+    os.environ["MLFLOW_TRACKING_USERNAME"] = username
+    os.environ["MLFLOW_TRACKING_PASSWORD"] = password
+    print("--- Kredensial MLflow (DagsHub) di-set secara eksplisit ---")
+# --- AKHIR TAMBAHAN EKSPLISIT ---
+
+
 # --- 1. KONEKSI KE DAGSHUB (WAJIB 4 Poin) ---
 try:
+    # Sekarang dagshub.init() akan menggunakan kredensial di atas
     dagshub.init(repo_owner='tarismajohn',
                  repo_name='modelling_dicoding_SML_Reksi',
                  mlflow=True)
@@ -80,7 +100,7 @@ def train_model_tuning(X_train, y_train, X_test, y_test):
         
         acc = accuracy_score(y_test, y_pred)
         precision = precision_score(y_test, y_pred) # Metrik Tambahan 1
-        recall = recall_score(y_test, y_pred)     # Metrik Tambahan 2
+        recall = recall_score(y_test, y_pred)      # Metrik Tambahan 2
         f1 = f1_score(y_test, y_pred)
 
         print("Mencatat (log) metrik...")

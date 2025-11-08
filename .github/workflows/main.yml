@@ -28,17 +28,17 @@ jobs:
         with:
           python-version: 3.9
 
-      # Langkah 3: Setup Conda (Menggunakan 'conda-incubator' Anda)
+      # Langkah 3: Setup Conda
       - name: Set up Miniconda
         uses: conda-incubator/setup-miniconda@v2
         with:
           auto-update-conda: true
           python-version: 3.9
-          activate-environment: none # Kita akan aktivasi manual
+          activate-environment: none 
           auto-activate-base: false
 
       # Langkah 4: Install MLflow & DagsHub di base env
-      # (Penting agar kita bisa menjalankan 'mlflow build-docker' nanti)
+      # (Ini Anda tambahkan, kita biarkan)
       - name: Install MLflow dependencies in base
         run: |
           pip install mlflow dagshub
@@ -61,15 +61,14 @@ jobs:
           echo "MLFLOW_TRACKING_USERNAME=${MLFLOW_TRACKING_USERNAME}" >> $GITHUB_ENV
           echo "MLFLOW_TRACKING_PASSWORD=${MLFLOW_TRACKING_PASSWORD}" >> $GITHUB_ENV
 
-      # --- PERBAIKAN DIMULAI DI SINI ---
-      
-      # Langkah 7 (BARU): Buat Env Conda secara Manual
+      # Langkah 7: Buat Env Conda secara Manual
       - name: Create Conda Environment from conda.yaml
         run: |
-          # 'mlops-k3-env' adalah 'name:' di file 'conda.yaml' Anda
           conda env create -f MLProject/conda.yaml
 
-      # Langkah 8 (BARU & GABUNGAN): Jalankan Training DAN Build Docker
+      # --- PERBAIKAN DI SINI ---
+      
+      # Langkah 8 (DIUBAH): Jalankan Training DAN HANYA BUILD Docker
       - name: Run Training and Build Docker Image
         env:
           # Teruskan secrets DagsHub ke langkah ini
@@ -84,12 +83,16 @@ jobs:
           echo "--- (Mulai Kriteria 3 Basic) Mulai Pelatihan Model ---"
           python MLProject/modelling.py
           
-          # 3. Jalankan build-docker (di dalam env yang sama)
+          # 3. Jalankan build-docker (TANPA --push)
           echo "--- (Mulai Kriteria 3 Advance) Mulai Build Docker Image ---"
           mlflow models build-docker \
             --name "tarismajohn/modelling-dicoding-sml-reksi:latest" \
-            --push \
             MLProject/
             
-      # --- PERBAIKAN SELESAI ---
-      # (Langkah 7 dan 8 yang lama sudah diganti/digabung)
+      # Langkah 9 (BARU): Push Docker image yang sudah di-build
+      - name: Push Docker Image
+        run: |
+          echo "--- Mendorong Image ke Docker Hub ---"
+          docker push tarismajohn/modelling-dicoding-sml-reksi:latest
+          
+    

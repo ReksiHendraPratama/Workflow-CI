@@ -126,8 +126,8 @@ def train_model_tuning(X_train, y_train, X_test, y_test):
         print("Mencatat (log) model terbaik sebagai artefak...")
         mlflow.sklearn.log_model(
             sk_model=best_model,
-            artifact_path="best_tuned_model",  # Nama folder artefak
-            registered_model_name=None 
+            name="best_tuned_model",  # <-- GANTI 'artifact_path' menjadi 'name'
+            registered_model_name=None  # <-- Ini mematikan registry
         )
 
         print(f"\n--- Selesai Run ID: {run.info.run_id} ---")

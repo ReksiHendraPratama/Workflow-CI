@@ -87,7 +87,7 @@ jobs:
           echo "--- (Mulai Kriteria 3 Advance) Mulai Build Docker Image ---"
           mlflow models build-docker \
             --name "tarismajohn/modelling-dicoding-sml-reksi:latest" \
-            MLProject/
+            -m MLProject/
             
       # Langkah 9 (BARU): Push Docker image yang sudah di-build
       - name: Push Docker Image

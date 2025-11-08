@@ -5,36 +5,53 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 import os
+import sys  # <--- TAMBAHKAN IMPORT SYS
 
-# --- TAMBAHAN EKSPLISIT UNTUK OTORISASI GITHUB ACTIONS ---
-# Ini "memaksa" script Python untuk membaca environment variables
-# yang Anda atur di file YAML (GitHub Secrets).
+# --- PENGECEKAN EKSPLISIT WAJIB ---
+# Kita akan cek apakah secrets dari GitHub terbaca oleh script ini
 
+print("--- Memulai Pengecekan Environment Variables ---")
+
+# Ambil nilainya
+uri = os.environ.get("MLFLOW_TRACKING_URI")
 username = os.environ.get("MLFLOW_TRACKING_USERNAME")
 password = os.environ.get("MLFLOW_TRACKING_PASSWORD")
 
-if not username or not password:
-    print("Gagal mengambil MLFLOW_TRACKING_USERNAME atau PASSWORD dari environment.")
-    print("Pastikan secrets sudah di-set di GitHub dan di-pass ke 'env:' di file YAML.")
-    # Kita tidak exit() di sini, kita biarkan dagshub.init() mencoba dan mungkin gagal
+# Debugging: Cetak apa yang didapat (kecuali password)
+print(f"MLFLOW_TRACKING_URI: {uri}")
+print(f"MLFLOW_TRACKING_USERNAME: {username}")
+print(f"MLFLOW_TRACKING_PASSWORD: {'***' if password else 'None'}") # Jangan cetak password, cukup cek ada/tidaknya
+
+# Validasi Paksa
+if not uri or not username or not password:
+    print("\n" + "="*50)
+    print("  GAGAL: SATU ATAU LEBIH SECRETS (URI, USERNAME, PASSWORD) TIDAK DITEMUKAN!")
+    print("  Pastikan Anda sudah mengatur 'env:' di langkah 'Run Training' pada file YAML.")
+    print("="*50 + "\n")
+    sys.exit(1) # <--- GAGALKAN WORKFLOW SECARA PAKSA
+
 else:
     # Set env var ini SECARA EKSPLISIT agar dagshub.init() bisa membacanya
     os.environ["MLFLOW_TRACKING_USERNAME"] = username
     os.environ["MLFLOW_TRACKING_PASSWORD"] = password
-    print("--- Kredensial MLflow (DagsHub) di-set secara eksplisit ---")
-# --- AKHIR TAMBAHAN EKSPLISIT ---
+    print("--- Kredensial MLflow (DagsHub) BERHASIL di-set secara eksplisit ---")
+
+# --- AKHIR PENGECEKAN EKSPLISIT ---
 
 
 # --- 1. KONEKSI KE DAGSHUB (WAJIB 4 Poin) ---
 try:
-    # Sekarang dagshub.init() akan menggunakan kredensial di atas
+    # Set URI secara eksplisit juga
+    mlflow.set_tracking_uri(uri) 
+    
     dagshub.init(repo_owner='tarismajohn',
                  repo_name='modelling_dicoding_SML_Reksi',
                  mlflow=True)
     print("Berhasil terhubung ke DagsHub (MLflow Server).")
 except Exception as e:
     print(f"Error DagsHub: {e}")
-    exit()
+    # Jika masih error di sini, berarti nilainya 100% salah.
+    sys.exit(1) # GAGALKAN JUGA DI SINI
 
 # --- 2. TENTUKAN PATH DATA ---
 TRAIN_PATH = os.path.join('winequality_preprocessing', 'train_processed.csv')

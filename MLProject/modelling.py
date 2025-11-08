@@ -124,7 +124,11 @@ def train_model_tuning(X_train, y_train, X_test, y_test):
         
         # --- 7. LOG MODEL (Manual - WAJIB 4 Poin) ---
         print("Mencatat (log) model terbaik sebagai artefak...")
-        mlflow.sklearn.log_model(best_model, "best_tuned_model")
+        mlflow.sklearn.log_model(
+            sk_model=best_model,
+            artifact_path="best_tuned_model",  # Nama folder artefak
+            registered_model_name=None 
+        )
 
         print(f"\n--- Selesai Run ID: {run.info.run_id} ---")
         print(f"  Accuracy: {acc:.4f}, Precision: {precision:.4f}, Recall: {recall:.4f}")

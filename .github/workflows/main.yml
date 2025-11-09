@@ -35,7 +35,7 @@ jobs:
       # Langkah 4: Install MLflow[docker], DagsHub, dan Joblib
       - name: Install MLflow[docker] dependencies in base
         run: |
-          pip install "mlflow[docker]" dagshub joblib
+          pip install "mlflow[docker]" dagshub joblib "pydantic<2.0"
 
       # Langkah 5: Login ke Docker Hub
       - name: Login to Docker Hub

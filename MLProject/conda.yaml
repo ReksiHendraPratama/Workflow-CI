@@ -10,3 +10,4 @@ dependencies:
     - scikit-learn
     - mlflow
     - dagshub
+    - "pydantic<2.0"

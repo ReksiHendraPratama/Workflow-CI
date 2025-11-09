@@ -55,11 +55,10 @@ jobs:
           echo "MLFLOW_TRACKING_USERNAME=${MLFLOW_TRACKING_USERNAME}" >> $GITHUB_ENV
           echo "MLFLOW_TRACKING_PASSWORD=${MLFLOW_TRACKING_PASSWORD}" >> $GITHUB_ENV
 
-      # Langkah 7: Buat Env Conda secara Manual
+      # Langkah 7 (DIPERBAIKI): Buat Env Conda secara Manual
       - name: Create Conda Environment from conda.yaml
         run: |
-          # Pastikan conda.yaml Anda berisi 'joblib'
-          echo "  - joblib" >> MLProject/conda.yaml
+          #HAPUS 'echo' karena 'joblib' sudah ada di file
           conda env create -f MLProject/conda.yaml
 
       # --- PERBAIKAN FINAL DI SINI ---

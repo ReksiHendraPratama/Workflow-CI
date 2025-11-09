@@ -1,5 +1,6 @@
 import pandas as pd
 import mlflow
+import joblib
 import mlflow.sklearn # Pastikan ini di-import
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GridSearchCV
@@ -125,17 +126,23 @@ def train_model_tuning(X_train, y_train, X_test, y_test):
         mlflow.log_metric("recall", recall)     # Memenuhi syarat 4 poin
         mlflow.log_metric("f1_score", f1)
         
-        # --- 8. LOG MODEL (PERBAIKAN KRITIS UNTUK 'RestException') ---
-        print("Mencatat (log) model terbaik sebagai artefak...")
-        #
-        # Kita GANTI 'name' (yang mencoba mendaftar/register model)
-        # menjadi 'artifact_path' (yang hanya menyimpan/log model)
-        # Ini akan memperbaiki error 'unsupported endpoint'.
-        #
-        mlflow.sklearn.log_model(
-            sk_model=best_model,
-            artifact_path="best_tuned_model" # <-- INI PERBAIKANNYA
+
+# --- 8. LOG MODEL (PERBAIKAN FINAL: Manual via joblib & log_artifact) ---
+        print("Mencatat (log) model terbaik sebagai artefak (Cara Manual)...")
+
+        # Tentukan nama file lokal
+        model_filename = "model.pkl"
+        
+        # 1. Simpan model ke file lokal di server GitHub Actions
+        joblib.dump(best_model, model_filename)
+        print(f"Model berhasil disimpan secara lokal ke: {model_filename}")
+
+         # 2. Upload file lokal itu sebagai artefak ke DagsHub
+        mlflow.log_artifact(
+            local_path=model_filename,
+            artifact_path="best_tuned_model" # Ini adalah NAMA FOLDER di DagsHub
         )
+        print("Artefak model (model.pkl) BERHASIL di-log ke DagsHub.")
 
         print(f"\n--- Selesai Run ID: {run.info.run_id} ---")
         print(f"  Accuracy: {acc:.4f}, Precision: {precision:.4f}, Recall: {recall:.4f}")

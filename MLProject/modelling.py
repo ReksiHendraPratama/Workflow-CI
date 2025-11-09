@@ -1,45 +1,31 @@
 import pandas as pd
 import mlflow
-import joblib
-import mlflow.sklearn # Pastikan ini di-import
+import mlflow.sklearn # Kita butuh ini untuk 'save_model'
+# import joblib # Kita tidak pakai joblib lagi
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 import os
-import sys # Kita butuh 'sys' untuk keluar jika ada error
+import sys
 
-# --- 1. KONEKSI KE DAGSHUB (VIA ENV SECRETS - WAJIB K3) ---
-# Ini adalah perbaikan untuk 'RestException' Anda.
-# Kita tidak pakai dagshub.init() di Kriteria 3.
+# --- 1. KONEKSI KE DAGSHUB (VIA ENV SECRETS) ---
 print("--- Memulai Pengecekan Environment Variables ---")
-
-# Ambil nilainya dari GitHub Secrets (diteruskan oleh main.yml)
 uri = os.environ.get("MLFLOW_TRACKING_URI")
 username = os.environ.get("MLFLOW_TRACKING_USERNAME")
 password = os.environ.get("MLFLOW_TRACKING_PASSWORD")
-
-# Debugging (Mencetak nilai, '***' untuk password)
 print(f"MLFLOW_TRACKING_URI: {uri}")
 print(f"MLFLOW_TRACKING_USERNAME: {username}")
 print(f"MLFLOW_TRACKING_PASSWORD: {'***' if password else 'None'}")
-
-# Validasi Paksa (Penting untuk debugging)
 if not uri or not username or not password:
-    print("\n" + "="*50)
-    print("  GAGAL: SECRETS (URI, USERNAME, PASSWORD) TIDAK DITEMUKAN!")
-    print("  Pastikan 'env:' di file YAML (main.yml) sudah benar.")
-    print("="*50 + "\n")
-    sys.exit(1) # Gagal (exit code 1)
+    print("\nGAGAL: SECRETS (URI, USERNAME, PASSWORD) TIDAK DITEMUKAN!\n")
+    sys.exit(1)
 else:
-    # Set env var ini SECARA EKSPLISIT agar MLflow bisa membacanya
     os.environ["MLFLOW_TRACKING_USERNAME"] = username
     os.environ["MLFLOW_TRACKING_PASSWORD"] = password
     print("--- Kredensial MLflow (DagsHub) BERHASIL di-set secara eksplisit ---")
 
-# --- 2. SET TRACKING URI (TANPA DAGSHUB.INIT) ---
+# --- 2. SET TRACKING URI ---
 try:
-    # Kita HANYA set tracking URI. 
-    # MLflow akan otomatis menggunakan USERNAME dan PASSWORD dari env var.
     mlflow.set_tracking_uri(uri)
     print(f"Berhasil mengatur MLflow Tracking URI ke: {uri}")
 except Exception as e:
@@ -47,107 +33,88 @@ except Exception as e:
     sys.exit(1)
 
 # --- 3. TENTUKAN PATH DATA ---
-# (Menggunakan path relatif yang robust dari lokasi script)
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 TRAIN_PATH = os.path.join(SCRIPT_DIR, 'winequality_preprocessing', 'train_processed.csv')
 TEST_PATH = os.path.join(SCRIPT_DIR, 'winequality_preprocessing', 'test_processed.csv')
 
 def load_data(train_path, test_path):
-    """Memuat data CSV yang sudah diproses dari folder K1."""
-    print(f"Memuat data training dari: {train_path}")
-    print(f"Memuat data testing dari: {test_path}")
-    
+    # ... (Fungsi load_data Anda - tidak perlu diubah) ...
+    print("Data berhasil dimuat.")
     try:
         df_train = pd.read_csv(train_path)
         df_test = pd.read_csv(test_path)
     except FileNotFoundError:
-        print(f"\nERROR: File data tidak ditemukan.")
-        print(f"Path yang dicari: {train_path}")
-        print("Pastikan folder 'winequality_preprocessing/' ada di dalam 'MLProject/'")
+        print(f"\nERROR: File data tidak ditemukan di {train_path}")
         sys.exit(1)
-    
     X_train = df_train.drop('is_good', axis=1)
     y_train = df_train['is_good']
     X_test = df_test.drop('is_good', axis=1)
     y_test = df_test['is_good']
-    
-    print("Data berhasil dimuat.")
     return X_train, y_train, X_test, y_test
 
 def train_model_tuning(X_train, y_train, X_test, y_test):
-    """
-    Melatih model dengan TUNING dan MANUAL LOGGING ke DagsHub
-    untuk Kriteria 2 (Advance).
-    """
-    
-    # --- 4. SET EKSPERIMEN & MULAI MANUAL LOGGING ---
     try:
-        # Kita beri nama Eksperimen (jika belum ada)
         mlflow.set_experiment("K3_CI_Wine_Classification") 
     except Exception as e:
         print(f"Gagal set experiment: {e}")
-        print("Ini BISA terjadi jika kredensial Anda (Token/URI) 100% salah.")
         sys.exit(1)
         
-    with mlflow.start_run(run_name="K3_CI_Run_Tuning") as run:
+    with mlflow.start_run(run_name="K3_CI_Run_Tuning_vFinal") as run:
         print("Memulai MLflow run (Manual Logging)...")
         
-        # --- 5. HYPERPARAMETER TUNING (Kriteria Skilled) ---
-        param_grid = {
-            'n_estimators': [100, 150], 
-            'max_depth': [10, 20]
-        }
-        
+        # ... (Langkah 5, 6, 7: Tuning, Log Parameter, Log Metrik - tidak perlu diubah) ...
         print("Memulai GridSearchCV (Tuning)...")
+        param_grid = {'n_estimators': [100, 150], 'max_depth': [10, 20]}
         rf = RandomForestClassifier(random_state=42)
         grid_search = GridSearchCV(estimator=rf, param_grid=param_grid, cv=3, n_jobs=-1, verbose=1)
         grid_search.fit(X_train, y_train)
-
         best_model = grid_search.best_estimator_
         best_params = grid_search.best_params_
         print(f"Tuning selesai. Parameter terbaik: {best_params}")
-
-        # --- 6. LOG PARAMETER (Manual - WAJIB 4 Poin) ---
         print("Mencatat (log) parameter terbaik...")
         mlflow.log_params(best_params) 
         mlflow.log_param("cv_folds", 3)
-
-        # --- 7. LOG METRIK (+2 TAMBAHAN - Manual - WAJIB 4 Poin) ---
         y_pred = best_model.predict(X_test)
-        
         acc = accuracy_score(y_test, y_pred)
         precision = precision_score(y_test, y_pred)
         recall = recall_score(y_test, y_pred)
         f1 = f1_score(y_test, y_pred)
-
         print("Mencatat (log) metrik...")
         mlflow.log_metric("accuracy", acc)
-        mlflow.log_metric("precision", precision) # Memenuhi syarat 4 poin
-        mlflow.log_metric("recall", recall)     # Memenuhi syarat 4 poin
+        mlflow.log_metric("precision", precision)
+        mlflow.log_metric("recall", recall)
         mlflow.log_metric("f1_score", f1)
         
-
-# --- 8. LOG MODEL (PERBAIKAN FINAL: Manual via joblib & log_artifact) ---
-        print("Mencatat (log) model terbaik sebagai artefak (Cara Manual)...")
-
-        # Tentukan nama file lokal
-        model_filename = "model.pkl"
+        # --- PERBAIKAN FINAL DI SINI (Langkah 8) ---
+        # (Sesuai temuan Anda, kita gunakan save_model untuk membuat MLmodel)
         
-        # 1. Simpan model ke file lokal di server GitHub Actions
-        joblib.dump(best_model, model_filename)
-        print(f"Model berhasil disimpan secara lokal ke: {model_filename}")
-
-         # 2. Upload file lokal itu sebagai artefak ke DagsHub
-        mlflow.log_artifact(
-            local_path=model_filename,
-            artifact_path="best_tuned_model" # Ini adalah NAMA FOLDER di DagsHub
+        # Tentukan nama folder output lokal
+        model_local_path = "model_local_output"
+        
+        print(f"Menyimpan model (format MLmodel) secara lokal ke folder: {model_local_path}")
+        
+        # 1. Simpan model ke folder lokal di server GitHub Actions
+        # Ini akan membuat folder 'model_local_output' berisi 'MLmodel', 'model.pkl', dll.
+        mlflow.sklearn.save_model(
+            sk_model=best_model,
+            path=model_local_path
         )
-        print("Artefak model (model.pkl) BERHASIL di-log ke DagsHub.")
+        print("Model (format MLmodel) BERHASIL disimpan secara lokal.")
+        
+        # 2. (Opsional, tapi bagus) Upload folder itu sebagai artefak ke DagsHub
+        try:
+            mlflow.log_artifact(
+                local_path=model_local_path,
+                artifact_path="model_files" 
+            )
+            print("Folder model berhasil di-log ke DagsHub (Artifacts).")
+        except Exception as e:
+            print(f"Peringatan: Gagal log artefak model: {e}")
+            pass
+        # --- PERBAIKAN SELESAI ---
 
         print(f"\n--- Selesai Run ID: {run.info.run_id} ---")
-        print(f"  Accuracy: {acc:.4f}, Precision: {precision:.4f}, Recall: {recall:.4f}")
-        print("-" * 50)
-        print(f"Cek run ini di DagsHub: {uri}/#/experiments/1/runs/{run.info.run_id}") # Memberi link langsung
+        print(f"Cek run ini di DagsHub: {uri}/#/experiments/2/runs/{run.info.run_id}")
 
 if __name__ == "__main__":
     X_train, y_train, X_test, y_test = load_data(TRAIN_PATH, TEST_PATH)

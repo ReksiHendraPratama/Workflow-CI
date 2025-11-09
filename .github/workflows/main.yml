@@ -12,7 +12,6 @@ jobs:
   build-train-and-push:
     runs-on: ubuntu-latest
     
-    # WAJIB: Atur shell default ke 'bash -l' agar 'conda activate' dikenali
     defaults:
       run:
         shell: bash -l {0} 
@@ -37,11 +36,11 @@ jobs:
           activate-environment: none 
           auto-activate-base: false
 
-      # Langkah 4: Install MLflow & DagsHub di base env
-      # (Ini Anda tambahkan, kita biarkan)
-      - name: Install MLflow dependencies in base
+      # Langkah 4 (DIPERBARUI): Install MLflow[docker], DagsHub, dan Joblib
+      # (joblib diperlukan oleh mlflow.sklearn.save_model)
+      - name: Install MLflow[docker] dependencies in base
         run: |
-          pip install mlflow dagshub
+          pip install "mlflow[docker]" dagshub joblib
 
       # Langkah 5: Login ke Docker Hub
       - name: Login to Docker Hub
@@ -64,14 +63,14 @@ jobs:
       # Langkah 7: Buat Env Conda secara Manual
       - name: Create Conda Environment from conda.yaml
         run: |
+          # Kita juga harus menambahkan joblib ke conda.yaml
+          echo "  - joblib" >> MLProject/conda.yaml
           conda env create -f MLProject/conda.yaml
 
-      # --- PERBAIKAN DI SINI ---
-      
-      # Langkah 8 (DIUBAH): Jalankan Training DAN HANYA BUILD Docker
+      # --- PERBAIKAN FINAL DI SINI ---
+      # Langkah 8 (GABUNGAN): Jalankan Training DAN Build Docker
       - name: Run Training and Build Docker Image
         env:
-          # Teruskan secrets DagsHub ke langkah ini
           MLFLOW_TRACKING_URI: ${{ env.MLFLOW_TRACKING_URI }}
           MLFLOW_TRACKING_USERNAME: ${{ env.MLFLOW_TRACKING_USERNAME }}
           MLFLOW_TRACKING_PASSWORD: ${{ env.MLFLOW_TRACKING_PASSWORD }}
@@ -81,18 +80,15 @@ jobs:
           
           # 2. Jalankan script python Anda (Training)
           echo "--- (Mulai Kriteria 3 Basic) Mulai Pelatihan Model ---"
+          # (Script ini sekarang akan membuat folder 'model_local_output')
           python MLProject/modelling.py
           
-          # 3. Jalankan build-docker (TANPA --push)
+          # 3. Jalankan 'mlflow models build-docker' (Perintah BARU)
+          # (Ini akan membaca dari folder 'model_local_output' yang baru dibuat)
           echo "--- (Mulai Kriteria 3 Advance) Mulai Build Docker Image ---"
           mlflow models build-docker \
             --name "tarismajohn/modelling-dicoding-sml-reksi:latest" \
-            -m MLProject/
+            --push \
+            -m "model_local_output" 
             
-      # Langkah 9 (BARU): Push Docker image yang sudah di-build
-      - name: Push Docker Image
-        run: |
-          echo "--- Mendorong Image ke Docker Hub ---"
-          docker push tarismajohn/modelling-dicoding-sml-reksi:latest
-          
-    
+      # --- PERBAIKAN SELESAI ---
